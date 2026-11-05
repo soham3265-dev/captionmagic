@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="en" class="dark scroll-smooth">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
+<title>CaptionMagic — AI Social Media Caption & Hashtag Generator</title>
+<meta name="description" content="Stop overthinking. Start posting. Generate viral captions & hashtags in seconds.">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  darkMode: 'class',
+  theme: {
+    extend: {
+      fontFamily: {
+        sans: ['Inter','system-ui','sans-serif'],
+        display: ['Sora','Inter','system-ui','sans-serif']
+      }
+    }
+  }
+}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<style>
+  *{ -webkit-tap-highlight-color: transparent; }
+  body{ font-family: Inter, system-ui, sans-serif; }
+  .font-display{ font-family: Sora, Inter, sans-serif; }
+
+  .bg-gradient-hero{
+    background: linear-gradient(135deg, #2a0a4a 0%, #1a0b2e 32%, #0f1e4a 68%, #0b1226 100%);
+    background-attachment: fixed;
+  }
+  html:not(.dark) .bg-gradient-hero{
+    background: linear-gradient(135deg, #a855f7 0%, #6366f1 35%, #ec4899 75%, #f59e0b 100%);
+    background-size: 400% 400%;
+    animation: gradShift 14s ease infinite;
+  }
+  @keyframes gradShift{ 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
+
+  .glass{
+    background: rgba(255,255,255,0.08);
+    backdrop-filter: blur(18px) saturate(160%);
+    -webkit-backdrop-filter: blur(18px) saturate(160%);
+    border: 1px solid rgba(255,255,255,0.16);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.12);
+  }
+  html:not(.dark) .glass{
+    background: rgba(255,255,255,0.72);
+    border: 1px solid rgba(255,255,255,0.6);
+    box-shadow: 0 8px 32px rgba(88,28,135,0.18);
+  }
+
+  .glass-strong{
+    background: rgba(255,255,255,0.12);
+    backdrop-filter: blur(20px) saturate(170%);
+    border: 1px solid rgba(255,255,255,0.18);
+  }
+  html:not(.dark) .glass-strong{
+    background: rgba(255,255,255,0.85);
+    border: 1px solid rgba(255,255,255,0.8);
+  }
+
+  .grad-text{
+    background: linear-gradient(92deg,#f0abfc 0%,#a78bfa 30%,#f472b6 65%,#fbbf24 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .grad-btn{ background: linear-gradient(92deg,#7c3aed,#db2777 55%,#ea580c); }
+
+  .pulse-btn{ position: relative; }
+  .pulse-btn::after{
+    content:''; position:absolute; inset:-4px; border-radius:9999px;
+    background: linear-gradient(92deg,#7c3aed,#db2777,#ea580c);
+    opacity:0; z-index:-1; filter: blur(18px); animation: pulseGlow 2.2s ease-in-out infinite;
+  }
+  @keyframes pulseGlow{ 0%,100%{opacity:.25; transform:scale(.98)} 50%{opacity:.6; transform:scale(1.04)} }
+  .pulse-btn:hover{ transform: translateY(-2px) scale(1.02); }
+  .pulse-btn:active{ transform: scale(.97); }
+
+  /* Quick category chips */
+  .qchip{ transition: all .22s cubic-bezier(.34,1.56,.64,1); white-space: nowrap; }
+  .qchip:hover{ transform: translateY(-2px) scale(1.05); }
+  .qchip:active{ transform: scale(.95); }
+  .qchip.used{ background: linear-gradient(92deg,#7c3aed,#db2777); color:#fff; border-color: transparent; }
+  #quickChips{ scrollbar-width: none; }
+  #quickChips::-webkit-scrollbar{ display:none; }
+
+  /* Keyboard dock mode */
+  #dockDim{
+    position: fixed; inset: 0; z-index: 65;
+    background: rgba(5,2,20,.6); backdrop-filter: blur(3px);
+    opacity: 0; pointer-events: none; transition: opacity .25s;
+  }
+  #dockDim.on{ opacity: 1; pointer-events: auto; }
+  #toolCard.docked{
+    position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+    width: min(680px, calc(100vw - 20px)); z-index: 70;
+    border-radius: 24px; margin: 0;
+    box-shadow: 0 -12px 48px rgba(0,0,0,.55), 0 0 0 1px rgba(240,171,252,.25);
+    animation: dockUp .28s cubic-bezier(.22,1,.36,1);
+  }
+  @keyframes dockUp{ from{ transform: translateX(-50%) translateY(24px); opacity:.4 } to{ transform: translateX(-50%) translateY(0); opacity:1 } }
+  #toolSpacer{ display: none; }
+  #toolCard.docked ~ #toolSpacer{ display: block; }
+
+  .caption-card{ transition: all .35s cubic-bezier(.22,1,.36,1); }
+  .caption-card:hover{
+    transform: translateY(-6px) scale(1.01);
+    border-color: rgba(240,171,252,.55);
+    box-shadow: 0 20px 40px rgba(124,58,237,.35), 0 0 0 1px rgba(240,171,252,.25);
+  }
+  html:not(.dark) .caption-card:hover{ box-shadow: 0 20px 40px rgba(139,92,246,.25); }
+
+  .heart-btn.saved{ color:#f43f5e !important; }
+
+  .copy-tooltip{
+    position: absolute; bottom: calc(100% + 8px); left:50%; transform: translateX(-50%) translateY(4px) scale(.9);
+    opacity:0; pointer-events:none; transition: all .25s; white-space: nowrap;
+  }
+  .copy-wrap.copied .copy-tooltip{ opacity:1; transform: translateX(-50%) translateY(0) scale(1); }
+  .copy-wrap.copied .copy-btn{ background: #10b981 !important; border-color:#10b981 !important; }
+  .tags-wrap.copied .copy-tooltip{ opacity:1; transform: translateX(-50%) translateY(0) scale(1); }
+
+  @keyframes cardIn{
+    from{ opacity:0; transform: translateY(18px) scale(.97); }
+    to{ opacity:1; transform: translateY(0) scale(1); }
+  }
+  .card-in{ animation: cardIn .5s cubic-bezier(.22,1,.36,1) both; }
+
+  .adsense-top,.adsense-inline,.adsense-bottom{
+    margin: 0 auto; width:100%; max-width: 728px;
+    display:flex; align-items:center; justify-content:center; gap:10px;
+    border: 2px dashed rgba(255,255,255,.25); border-radius: 16px;
+    background: rgba(255,255,255,.05); color: rgba(255,255,255,.55);
+    font-size:12px; letter-spacing:.08em; text-transform:uppercase; font-weight:600;
+    min-height: 90px; text-align:center; padding: 12px 16px;
+  }
+  html:not(.dark) .adsense-top, html:not(.dark) .adsense-inline, html:not(.dark) .adsense-bottom{
+    border-color: rgba(88,28,135,.25); background: rgba(255,255,255,.55); color: rgba(88,28,135,.6);
+  }
+  .adsense-inline{ min-height:120px; max-width:100%; }
+  .adsense-top,.adsense-bottom{ min-height:56px; }
+  @media (max-width:640px){ .adsense-top,.adsense-bottom{ min-height:48px; font-size:11px; } }
+
+  .toast{
+    position: fixed; bottom:24px; left:50%; transform: translateX(-50%) translateY(80px);
+    background: #111827; color:white; padding:12px 20px; border-radius:999px;
+    font-size:14px; font-weight:600; box-shadow:0 10px 30px rgba(0,0,0,.4);
+    transition: transform .35s cubic-bezier(.34,1.56,.64,1), opacity .3s;
+    opacity:0; z-index:120; pointer-events:none; border:1px solid rgba(255,255,255,.15);
+  }
+  .toast.show{ transform: translateX(-50%) translateY(0); opacity:1; }
+
+  .char-counter.low{ color:#f59e0b; } .char-counter.over{ color:#ef4444; }
+  .loading-dots span{ animation: blink 1.2s infinite; display:inline-block; }
+  .loading-dots span:nth-child(2){ animation-delay:.15s } .loading-dots span:nth-child(3){ animation-delay:.3s }
+  @keyframes blink{ 0%,80%,100%{opacity:.25} 40%{opacity:1} }
+
+  .saved-item{ transition: all .25s; } .saved-item:hover{ transform:translateX(4px); border-color:rgba(244,63,94,.4); }
+  .orb{ position:fixed; border-radius:50%; filter:blur(70px); opacity:.35; pointer-events:none; z-index:0; }
+  #resultsSection{ scroll-margin-top: 88px; }
+  .score-pill{ font-size:10px; font-weight:800; padding:2px 6px; border-radius:999px; }
+</style>
+</head>
+
+<body class="bg-gradient-hero min-h-screen text-white dark:bg-slate-950 overflow-x-hidden selection:bg-pink-500 selection:text-white">
+
+<div class="orb w-[400px] h-[400px] -top-32 -left-32" style="background:#7c3aed"></div>
+<div class="orb w-[350px] h-[350px] top-[40%] -right-32" style="background:#db2777"></div>
+<div class="orb w-[300px] h-[300px] -bottom-20 left-[30%]" style="background:#2563eb"></div>
+<div id="dockDim"></div>
+
+<div class="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 pb-10">
+
+  <!-- ===== HEADER ===== -->
+  <header class="sticky top-3 z-50 mt-3">
+    <div class="glass rounded-full px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
+      <div class="flex items-center gap-3 min-w-0">
+        <div class="w-10 h-10 shrink-0 rounded-2xl grad-btn flex items-center justify-center text-xl shadow-lg shadow-pink-500/40">
+          <i class="fa-solid fa-wand-magic-sparkles text-white"></i>
+        </div>
+        <div class="min-w-0">
+          <div class="font-display font-extrabold text-lg leading-none tracking-tight">Caption<span class="grad-text">Magic</span></div>
+          <div class="text-[11px] sm:text-xs text-white/60 truncate">Stop overthinking. Start posting.</div>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <a href="#tool" class="hidden sm:inline-flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-full glass-strong hover:scale-105 transition">
+          <i class="fa-solid fa-bolt text-amber-400"></i> Try it free
+        </a>
+        <button id="themeToggle" aria-label="Toggle dark / light mode"
+          class="w-11 h-11 rounded-full glass-strong flex items-center justify-center hover:scale-110 active:scale-95 transition text-lg">
+          <span class="dark:hidden"><i class="fa-solid fa-sun text-amber-400"></i></span>
+          <span class="hidden dark:inline"><i class="fa-regular fa-moon text-violet-300"></i></span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Ad Placement 1 -->
+  <div class="adsense-top mt-3">
+    <i class="fa-regular fa-rectangle-ad text-lg"></i>
+    <span>AdSense Banner &nbsp;•&nbsp; adsense-top &nbsp;•&nbsp; 728×90</span>
+  </div>
+
+  <!-- ===== HERO (COMPACT) ===== -->
+  <section class="text-center pt-4 sm:pt-6 pb-3">
+    <div class="inline-flex items-center gap-2 glass rounded-full px-3.5 py-1 text-xs font-medium mb-3">
+      <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+      <span class="text-white/80">AI Database live — <span id="dbStatsTop">…</span></span>
+    </div>
+    <h1 class="font-display font-extrabold text-3xl sm:text-4xl lg:text-5xl tracking-tight leading-tight">
+      AI Caption &amp; <span class="grad-text">Hashtag Generator</span>
+    </h1>
+    <p class="mt-1.5 text-white/70 text-sm sm:text-base max-w-lg mx-auto leading-snug">
+      Describe your post. We pull the perfect words from our viral database.
+    </p>
+  </section>
+
+  <!-- ===== TOOL CARD (input + generate docked together) ===== -->
+  <section id="toolCard" class="glass rounded-[24px] p-4 sm:p-5 scroll-mt-24">
+    <!-- Quick Category chips -->
+    <div class="flex items-center gap-2 mb-2.5">
+      <span class="text-[11px] font-bold uppercase tracking-wider text-white/50 shrink-0"><i class="fa-solid fa-database mr-1 text-pink-400"></i>Quick:</span>
+      <div id="quickChips" class="flex gap-1.5 overflow-x-auto flex-1 pb-0.5"></div>
+    </div>
+
+    <div class="relative">
+      <textarea id="promptInput" rows="2" maxlength="220" placeholder="e.g. Playing PS5 all night… or Trip to Paris…"
+        class="w-full rounded-2xl bg-black/25 dark:bg-white/10 border border-white/20 text-white placeholder-white/40 p-3.5 pr-16 text-base outline-none focus:border-pink-400 focus:ring-4 focus:ring-pink-500/20 resize-none transition"
+        enterkeyhint="go" autocapitalize="sentences"></textarea>
+      <span id="charCount" class="char-counter absolute bottom-2.5 right-3.5 text-xs font-semibold text-white/50">0 / 220</span>
+    </div>
+
+    <button id="generateBtn" class="pulse-btn grad-btn w-full mt-2.5 rounded-full py-3.5 font-display font-extrabold text-lg text-white shadow-2xl shadow-pink-600/40 flex items-center justify-center gap-3 transition">
+      <i class="fa-solid fa-wand-magic-sparkles text-xl"></i>
+      <span id="generateLabel">Generate Magic</span>
+      <span id="generateLoading" class="hidden items-center gap-1">Generating<span class="loading-dots"><span>.</span><span>.</span><span>.</span></span></span>
+    </button>
+    <p id="dbStatsLine" class="text-center text-[11px] text-white/45 mt-2"><i class="fa-solid fa-lock mr-1"></i> Runs 100% in your browser — nothing is uploaded.</p>
+  </section>
+  <div id="toolSpacer"></div>
+
+  <!-- ===== RESULTS ===== -->
+  <section id="resultsSection" class="hidden mt-8">
+    <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
+      <h2 class="font-display font-extrabold text-2xl sm:text-3xl flex items-center gap-3 flex-wrap">
+        <i class="fa-solid fa-wand-magic-sparkles grad-text"></i> Your captions
+        <span id="detectedBadge" class="text-xs sm:text-sm glass-strong rounded-full px-3 py-1.5 font-sans font-bold"></span>
+      </h2>
+      <button id="regenBtn" class="glass-strong rounded-full px-4 py-2 text-sm font-bold hover:scale-105 active:scale-95 transition">
+        <i class="fa-solid fa-rotate mr-2 text-pink-400"></i>Regenerate
+      </button>
+    </div>
+
+    <div id="captionsGrid" class="grid md:grid-cols-3 gap-4 sm:gap-5"></div>
+
+    <!-- Ad Placement 2 -->
+    <div class="adsense-inline mt-8">
+      <i class="fa-regular fa-rectangle-ad text-lg"></i>
+      <span>AdSense Inline &nbsp;•&nbsp; adsense-inline &nbsp;•&nbsp; Responsive</span>
+    </div>
+
+    <!-- Hashtags + Virality Scores -->
+    <div class="glass rounded-[24px] p-5 sm:p-7 mt-8">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <h3 class="font-display font-bold text-lg sm:text-xl flex items-center gap-2 flex-wrap">
+          <i class="fa-solid fa-hashtag grad-text"></i> Viral Hashtags
+          <span id="avgScoreBadge" class="text-xs glass-strong rounded-full px-2.5 py-1 font-sans font-bold"></span>
+        </h3>
+        <div class="relative copy-wrap tags-wrap">
+          <span class="copy-tooltip bg-slate-900 text-white text-xs font-bold px-3 py-1.5 rounded-full border border-white/20">Copied! ✓</span>
+          <button id="copyTagsBtn" class="grad-btn rounded-full px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-pink-600/30 hover:scale-105 active:scale-95 transition flex items-center gap-2">
+            <i class="fa-regular fa-copy"></i> Copy All Hashtags
+          </button>
+        </div>
+      </div>
+      <div id="hashtagsBox" class="mt-4 flex flex-wrap gap-2"></div>
+      <p class="text-xs text-white/50 mt-4"><i class="fa-solid fa-lightbulb mr-1 text-amber-400"></i> Virality scores re-seed daily. Paste tags at the end of your caption for best reach.</p>
+    </div>
+  </section>
+
+  <!-- ===== ENGAGEMENT ===== -->
+  <div class="grid lg:grid-cols-5 gap-6 mt-10">
+    <section class="lg:col-span-3 glass rounded-[24px] p-5 sm:p-7">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <h2 class="font-display font-extrabold text-xl sm:text-2xl flex items-center gap-2">
+          <i class="fa-solid fa-heart text-rose-500"></i> My Saved Captions
+          <span id="savedCount" class="text-xs glass-strong rounded-full px-2.5 py-1 font-sans font-bold">0 saved</span>
+        </h2>
+        <button id="clearSavedBtn" class="text-sm font-bold px-4 py-2 rounded-full bg-rose-500/20 border border-rose-500/30 text-rose-300 hover:bg-rose-500 hover:text-white transition flex items-center gap-2">
+          <i class="fa-solid fa-trash-can"></i> Clear All
+        </button>
+      </div>
+      <div id="savedList" class="mt-5 space-y-3"></div>
+      <div id="savedEmpty" class="mt-6 text-center py-10 rounded-2xl border-2 border-dashed border-white/15">
+        <div class="text-4xl mb-3"><i class="fa-regular fa-heart text-white/30"></i></div>
+        <p class="font-bold text-white/70">No favourites yet</p>
+        <p class="text-sm text-white/50 mt-1">Tap the <i class="fa-solid fa-heart text-rose-400"></i> on any caption — it lives here even after refresh (this device only).</p>
+      </div>
+    </section>
+
+    <section class="lg:col-span-2 glass rounded-[24px] p-5 sm:p-7 relative overflow-hidden">
+      <div class="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-pink-500/25 blur-3xl pointer-events-none"></div>
+      <h2 class="font-display font-extrabold text-xl sm:text-2xl flex items-center gap-2 relative">
+        <i class="fa-solid fa-rocket text-amber-400"></i> Viral Tips
+      </h2>
+      <p class="text-sm text-white/55 mt-1 relative">Quick wins to grow faster.</p>
+      <div class="mt-5 space-y-4 relative">
+        <div class="flex gap-4">
+          <div class="w-11 h-11 shrink-0 rounded-2xl grad-btn flex items-center justify-center text-lg shadow-lg shadow-pink-500/30"><i class="fa-regular fa-clock"></i></div>
+          <div>
+            <div class="font-bold">Post at 7 PM</div>
+            <p class="text-sm text-white/60 leading-snug">Evenings get the most saves. Queue your post for 6:30–7:00 PM where your audience lives.</p>
+          </div>
+        </div>
+        <div class="flex gap-4">
+          <div class="w-11 h-11 shrink-0 rounded-2xl bg-sky-500/90 flex items-center justify-center text-lg shadow-lg shadow-sky-500/30"><i class="fa-solid fa-comments"></i></div>
+          <div>
+            <div class="font-bold">Reply to the first 5 comments</div>
+            <p class="text-sm text-white/60 leading-snug">Fast replies in the first 30 minutes boost engagement and trigger the algorithm.</p>
+          </div>
+        </div>
+        <div class="flex gap-4">
+          <div class="w-11 h-11 shrink-0 rounded-2xl bg-emerald-500/90 flex items-center justify-center text-lg shadow-lg shadow-emerald-500/30"><i class="fa-solid fa-share-nodes"></i></div>
+          <div>
+            <div class="font-bold">Use 3–5 hashtags + share to Stories</div>
+            <p class="text-sm text-white/60 leading-snug">Mix broad + niche tags, then reshare with a poll sticker.</p>
+          </div>
+        </div>
+      </div>
+      <div class="mt-6 rounded-2xl bg-black/20 dark:bg-black/30 border border-white/10 p-4 relative">
+        <div class="text-xs font-bold uppercase tracking-wider text-white/50 mb-2"><i class="fa-solid fa-chart-line mr-1 text-emerald-400"></i> Why This Works</div>
+        <p class="text-sm text-white/65 leading-relaxed">Captions + hashtags are <span class="font-bold text-white">only half the game</span>. Consistency, early engagement and resaves beat a perfect caption every time.</p>
+      </div>
+    </section>
+  </div>
+
+  <!-- Ad Placement 3 -->
+  <div class="adsense-bottom mt-10">
+    <i class="fa-regular fa-rectangle-ad text-lg"></i>
+    <span>AdSense Footer &nbsp;•&nbsp; adsense-bottom &nbsp;•&nbsp; 728×90</span>
+  </div>
+
+  <footer class="text-center mt-8 pb-4">
+    <div class="font-display font-bold">Caption<span class="grad-text">Magic</span> <span class="text-white/40 font-normal">— Stop overthinking. Start posting.</span></div>
+    <p class="text-xs text-white/45 mt-2">Made for creators • Works offline after first load • Favourites stored locally on your device</p>
+  </footer>
+</div>
+
+<div id="toast" class="toast" role="status" aria-live="polite">Copied to clipboard!</div>
+
+<script>
+/* ================= DATABASE ================= */
+const UNIVERSAL_TAGS = ['fyp','foryou','viral','trending','explore','explorepage','shorts','reels'];
+
+const HASHTAG_DB = {
+  Gaming: ['gamingcommunity','twitchstreamer','gamersunite','gaming','gamer','gamingclips','gamingreels','gamerlife','twitch','twitchgamer','ps5','playstation','xbox','pcgaming','nintendoswitch','videogames','esports','gameofthrones','fortnite','minecraft','valorant','callofduty','warzone','apexlegends','gamingsetup','battlestation','retrogaming','speedrun','indiegame','gamergirl'],
+  Travel: ['travelgram','wanderlust','travelphotography','travelblogger','traveling','traveltheworld','traveladdict','traveller','traveldiaries','instatravel','adventure','vacation','holiday','passportstamps','travelgoals','roadtrip','backpacking','tourism','hotelview','beachlife','islandlife','mountainlove','hikingtrails','cityscape','triptime','flights','luxurytravel','solotravel','explorepage','bucketlist'],
+  Food: ['foodie','foodporn','instafood','foodphotography','foodstagram','foodgasm','foodblogger','foodlover','homemade','cooking','recipe','yum','delicious','tasty','foodiegram','brunch','dessertlover','coffeetime','pizzalover','pastalover','sushi','healthyfood','foodreels','chefslife','eatlocal','foodmarket','streetfood','gourmet','food coma','saladbowl'],
+  Fitness: ['fitnessmotivation','gymlife','workout','gymmotivation','fitnessjourney','fitfam','training','gymrat','bodybuilding','powerlifting','crossfit','cardio','running','runnersofinstagram','fitspo','healthylifestyle','strong','gains','workoutmotivation','fitnessgoals','corestrength','yoga','pilates','hiitworkout','fitnessaddict','nopainnogain','personaltrainer','fitnessreels','legday','gymtime'],
+  Tech: ['tech','technology','gadgets','unboxing','smartphone','laptop','pcbuild','mechanicalkeyboard','ai','techreview','futuretech','innovation','techie','technews','startuplife','coding','programmer','developer','applesetup','android','smartwatch','dronelife','robotics','cybersecurity','softwareengineer','techtips','newtech','tesla','spacex','vr'],
+  Fashion: ['fashion','ootd','outfitoftheday','style','streetstyle','fashionblogger','fashionista','styleinspo','outfitinspo','lookbook','mensfashion','womensfashion','streetwear','fashiondaily','fashiongram','trendy','chic','thrifted','vintagefashion','runway','hautecouture','designerwear','sneakerhead','sneakers','outfitideas','fashionaddict','minimaliststyle','fashionreels','stylediary','newcollection'],
+  Beauty: ['beauty','skincare','skincareroutine','makeup','makeupartist','mua','beautyproducts','glow','glowingskin','selfcare','beautyreels','makeuplooks','cosmetics','lipstick','mascara','eyeliner','foundation','skincarecommunity','beautytutorial','nails','nailart','manicure','haircare','hairstyle','beautyjunkie','flawless','beautytips','browsonpoint','lashesnmore','beautygram'],
+  Lifestyle: ['aesthetic','lifestyle','vibes','goodvibes','instagood','photooftheday','dailyvibe','moodygrams','goldenhour','sunset','nature','minimalism','cozyvibes','softaesthetic','dreamy','maincharacterenergy','thatgirl','selflove','motivation','inspiration','moments','memories','chill','photography','aestheticvibes','slowliving','hygge','mood','positivity','mindset']
+};
+
+const CAPTION_DB = {
+  Gaming: {
+    emoji: ['🎮','👾','🕹️','🏆','🔥','💎','👑','⚡'],
+    templates: [
+      p => `Level up your day 🎮 ${p} is today's main quest`,
+      p => `POV: ${p} and suddenly it is 3 AM 👾`,
+      p => `+100 XP for ${p} 🏆 GG`,
+      p => `Respawned better than ever — ${p} 💎`,
+      p => `No lag, no excuses. Just ${p} 🔥`,
+      p => `Achievement unlocked: ${p} ⚡`,
+      p => `The squad said one more game… so ${p} 🕹️`,
+      p => `Hard carry energy today: ${p} 👑`,
+    ]
+  },
+  Travel: {
+    emoji: ['✈️','🌍','🧳','🗺️','🌴','📸','🏖️','🧭'],
+    templates: [
+      p => `Wanderlust loading… ${p} ✈️`,
+      p => `Postcards from ${p} 🌍 no return ticket needed`,
+      p => `Collecting stamps, not regrets — ${p} 🧳`,
+      p => `${p}. Save this pin for later 📍`,
+      p => `Every mile a memory: ${p} 🗺️`,
+      p => `Sun, sky and ${p} 🌴 take me back`,
+      p => `Passport full, heart fuller — ${p} 🧭`,
+      p => `Bucket list ✅ ${p} 🏖️`,
+    ]
+  },
+  Food: {
+    emoji: ['🍕','🍔','🍰','☕','🍜','🥑','🍓','🔥'],
+    templates: [
+      p => `Foodie mode ON 🍕 ${p} hits different`,
+      p => `Recipe for a perfect day: ${p} + extra sauce 🔥`,
+      p => `You had me at ${p} 🍰`,
+      p => `Forks up for ${p} 🍜`,
+      p => `Homemade and winning: ${p} 🥑`,
+      p => `Sweet tooth approved — ${p} 🍓`,
+      p => `Chef era continues: ${p} ☕`,
+      p => `${p}. Restaurant quality, kitchen chaos 😅`,
+    ]
+  },
+  Fitness: {
+    emoji: ['💪','🏋️','🔥','⚡','🏃','🧘','🥗','🏆'],
+    templates: [
+      p => `No shortcuts, just ${p} 💪 every rep counts`,
+      p => `Stronger every day: ${p} 🏋️`,
+      p => `Sweat equity pays dividends — ${p} 🔥`,
+      p => `Mindset is muscle. ${p} ⚡`,
+      p => `Earned, not given: ${p} 🏃`,
+      p => `${p} today, PR tomorrow 🏆`,
+      p => `Fuel over excuses: ${p} 🥗`,
+      p => `Find your flow with ${p} 🧘`,
+    ]
+  },
+  Tech: {
+    emoji: ['💻','⚡','🚀','🤖','🔧','📦','✨','🔥'],
+    templates: [
+      p => `Setup level: unlocked — ${p} 💻`,
+      p => `${p} and my productivity just doubled ⚡`,
+      p => `Unbox. Test. Obsess: ${p} 📦`,
+      p => `The future arrived early: ${p} 🚀`,
+      p => `Tech goals achieved — ${p} 🔧`,
+      p => `${p} in 2026? We live in the future 🤖`,
+      p => `Review in one line: ${p} = 🔥`,
+      p => `Upgrade complete: ${p} ✨`,
+    ]
+  },
+  Fashion: {
+    emoji: ['👗','👠','👜','🕶️','👟','💎','🖤','✨'],
+    templates: [
+      p => `Serving looks: ${p} 👗`,
+      p => `OOTD check — ${p} ✨`,
+      p => `Fashion is my love language: ${p} 👠`,
+      p => `Dressed like the main character: ${p} 🕶️`,
+      p => `${p} — confidence included 💎`,
+      p => `Wardrobe win of the day: ${p} 👜`,
+      p => `Runway energy, everyday wardrobe: ${p} 👟`,
+      p => `Today's style script: ${p} 🖤`,
+    ]
+  },
+  Beauty: {
+    emoji: ['💄','🧖‍♀️','🌸','💧','🪞','💖','✨','😌'],
+    templates: [
+      p => `Glow check ✨ ${p} did all the work`,
+      p => `Self-care is a lifestyle: ${p} 🧖‍♀️`,
+      p => `Mirror, mirror — ${p} 😍`,
+      p => `Routine over luck: ${p} 💧`,
+      p => `Soft skin, softer mood: ${p} 🌸`,
+      p => `${p} = instant confidence booster 💄`,
+      p => `The beauty hack you needed today: ${p} 🪞`,
+      p => `Radiating from the inside out — ${p} 💖`,
+    ]
+  },
+  Lifestyle: {
+    emoji: ['✨','🌅','🌙','💫','🌸','🫧','🦋','🌊'],
+    templates: [
+      p => `Chasing ${p} and never letting go ✨`,
+      p => `This is what ${p} feels like 💫`,
+      p => `POV: ${p} but make it a dream 🌙`,
+      p => `Collecting moments like ${p} 🫧`,
+      p => `All I need today: ${p} + a little magic ✨`,
+      p => `Romanticising my life, one ${p} at a time 🌸`,
+      p => `${p} — main character energy only 🎬`,
+      p => `Proof that ${p} makes everything better 🦋`,
+    ]
+  }
+};
+
+const KEYWORDS = {
+  Gaming: ['ps5','playstation','xbox','nintendo','switch','gaming','gamer','game','fortnite','minecraft','valorant','gta','call of duty','warzone','apex','roblox','steam','twitch','esports','video game','controller','console','boss fight','respawn','speedrun','elden ring','zelda','pokemon','overwatch','csgo','counter strike','dota','rocket league','among us','souls','level up','xp','game of thrones','gameofthrones'],
+  Travel: ['travel','trip','vacation','holiday','flight','airport','hotel','beach','paris','tokyo','london','dubai','bali','rome','italy','greece','santorini','maldives','thailand','japan','spain','france','iceland','switzerland','hiking','mountain','roadtrip','road trip','backpacking','adventure','wanderlust','island','cruise','camping','tourist','passport','sightseeing'],
+  Food: ['food','eat','eating','pizza','burger','sushi','coffee','cafe','restaurant','recipe','cooking','cook','breakfast','lunch','dinner','cake','dessert','pasta','taco','ramen','brunch','salad','baking','kitchen','chef','meal','snack','drink','cocktail','smoothie','gourmet','yummy','delicious','taste','grill','bbq','chocolate','ice cream','healthy salad','salad bowl'],
+  Fitness: ['gym','workout','fitness','exercise','yoga','running','run','lifting','lift','weights','training','muscle','leg day','cardio','crossfit','pilates','hiit','marathon','5k','10k','gains','reps','squat','deadlift','bench press','protein','bodybuilding','strength','athlete','jog'],
+  Tech: ['tech','technology','gadget','unboxing','iphone','android','laptop','macbook','pc build','pcbuild','keyboard','ai','artificial intelligence','robot','drone','smartwatch','apple','samsung','software','code','coding','programmer','developer','startup','tesla','spacex','vr','headset','new phone','wifi','setup'],
+  Beauty: ['beauty','skincare','skin','makeup','mua','cosmetic','glow','lipstick','mascara','serum','retinol','spf','moisturizer','perfume','lashes','brow','self care','selfcare','facial','nail art'],
+  Fashion: ['fashion','ootd','outfit','style','streetwear','sneaker','shoes','dress','thrift','vintage','jacket','jeans','shirt','fit check','wardrobe','runway','zara','nike','adidas','closet','haul','lookbook'],
+  Lifestyle: []
+};
+
+const QUICK_CHIPS = [
+  { label:'🎮 Gaming',   cat:'Gaming',   fill:'Playing PS5 with the squad all night' },
+  { label:'✈️ Travel',   cat:'Travel',   fill:'Trip to Paris, visiting the Eiffel Tower' },
+  { label:'🍔 Food',     cat:'Food',     fill:'Healthy salad bowl and fresh smoothie' },
+  { label:'💪 Fitness',  cat:'Fitness',  fill:'Leg day at the gym, new PR' },
+  { label:'💻 Tech',     cat:'Tech',     fill:'Unboxing my new laptop setup' },
+  { label:'👗 Fashion',  cat:'Fashion',  fill:'OOTD street style with new sneakers' },
+  { label:'💄 Beauty',   cat:'Beauty',   fill:'Morning skincare routine, glass skin' },
+  { label:'✨ Lifestyle',cat:'Lifestyle', fill:'Sunset at the beach with friends' },
+];
+
+/* ================= STATE ================= */
+const CAPTIONS_SHOWN = 3;
+let currentCaptions = [];
+let currentHashtags = [];
+let detectedCat = 'Lifestyle';
+let lastPrompt = '';
+
+const $ = id => document.getElementById(id);
+const root = document.documentElement;
+const promptInput = $('promptInput');
+const charCount = $('charCount');
+const generateBtn = $('generateBtn');
+const generateLabel = $('generateLabel');
+const generateLoading = $('generateLoading');
+const captionsGrid = $('captionsGrid');
+const hashtagsBox = $('hashtagsBox');
+const toast = $('toast');
+const toolCard = $('toolCard');
+const dockDim = $('dockDim');
+const toolSpacer = $('toolSpacer');
+
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+function shuffle(arr){
+  const a = [...arr];
+  for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+  return a;
+}
+
+/* ================= DB STATS ================= */
+(function initDbStats(){
+  let tags = UNIVERSAL_TAGS.length;
+  Object.values(HASHTAG_DB).forEach(a => tags += a.length);
+  let temps = 0;
+  Object.values(CAPTION_DB).forEach(c => temps += c.templates.length);
+  const cats = Object.keys(HASHTAG_DB).length;
+  const txt = ` ${tags}+ hashtags • ${temps} templates • ${cats} categories • updated daily`;
+  $('dbStatsTop').textContent = `${tags} hashtags • ${cats} categories`;
+  $('dbStatsLine').innerHTML = `<i class="fa-solid fa-database mr-1 text-emerald-400"></i> Live database: ${tags} tags · ${temps} templates · <i class="fa-solid fa-lock mx-1"></i>100% private, runs in your browser`;
+})();
+
+/* ================= THEME ================= */
+function setTheme(mode){
+  if(mode === 'light'){ root.classList.remove('dark'); localStorage.setItem('cm-theme','light'); }
+  else { root.classList.add('dark'); localStorage.setItem('cm-theme','dark'); }
+}
+(function initTheme(){
+  const saved = localStorage.getItem('cm-theme');
+  if(saved === 'light') root.classList.remove('dark');
+  else if(saved === 'dark') root.classList.add('dark');
+  else if(window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) root.classList.remove('dark');
+})();
+$('themeToggle').addEventListener('click', () => {
+  setTheme(root.classList.contains('dark') ? 'light' : 'dark');
+});
+
+/* ================= QUICK CHIPS ================= */
+(function initChips(){
+  $('quickChips').innerHTML = QUICK_CHIPS.map((c,i) =>
+    `<button class="qchip glass-strong rounded-full px-3 py-1.5 text-xs font-bold shrink-0" data-i="${i}">${c.label}</button>`
+  ).join('');
+  $('quickChips').querySelectorAll('.qchip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const c = QUICK_CHIPS[+btn.dataset.i];
+      promptInput.value = c.fill;
+      updateCount();
+      promptInput.focus();
+      $('quickChips').querySelectorAll('.qchip').forEach(b => b.classList.remove('used'));
+      btn.classList.add('used');
+      showToast(`${c.cat} database loaded ${c.label.split(' ')[0]}`);
+    });
+  });
+})();
+
+/* ================= CHAR COUNT ================= */
+function updateCount(){
+  const n = promptInput.value.length;
+  charCount.textContent = n + ' / 220';
+  charCount.classList.toggle('low', n > 180 && n <= 220);
+  charCount.classList.toggle('over', n > 220);
+}
+promptInput.addEventListener('input', updateCount);
+updateCount();
+
+/* ================= TOAST ================= */
+let toastTimer;
+function showToast(msg){
+  toast.textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 1800);
+}
+
+/* ============ KEYBOARD DOCK (mobile UX) ============ */
+function dockTool(){
+  if(toolCard.classList.contains('docked')) return;
+  toolSpacer.style.height = toolCard.offsetHeight + 'px';
+  toolCard.classList.add('docked');
+  dockDim.classList.add('on');
+  positionDock();
+}
+function undockTool(){
+  if(!toolCard.classList.contains('docked')) return;
+  toolCard.classList.remove('docked');
+  toolCard.style.bottom = '';
+  dockDim.classList.remove('on');
+}
+function positionDock(){
+  if(!toolCard.classList.contains('docked')) return;
+  if(window.visualViewport){
+    const vv = window.visualViewport;
+    const kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+    toolCard.style.bottom = kb + 'px';
+  }
+}
+if(window.visualViewport){
+  const vv = window.visualViewport;
+  vv.addEventListener('resize', positionDock);
+  vv.addEventListener('scroll', positionDock);
+}
+promptInput.addEventListener('focus', () => setTimeout(dockTool, 120));
+promptInput.addEventListener('blur', () => {
+  setTimeout(() => {
+    const ae = document.activeElement;
+    if(toolCard.classList.contains('docked') && ae !== promptInput && !toolCard.contains(ae)) undockTool();
+  }, 180);
+});
+dockDim.addEventListener('mousedown', e => { e.preventDefault(); undockTool(); });
+
+/* ================= SMART DETECTION ================= */
+function detectCategory(prompt){
+  const lower = ' ' + (prompt||'').toLowerCase() + ' ';
+  const order = ['Gaming','Travel','Food','Fitness','Tech','Beauty','Fashion'];
+  for(const cat of order){
+    const kws = KEYWORDS[cat] || [];
+    for(const kw of kws){ if(lower.includes(kw)) return cat; }
+  }
+  return 'Lifestyle';
+}
+
+/* ================= VIRALITY SCORE (date-based seed) ================= */
+function hashStr(str){
+  let h = 2166136261 >>> 0;
+  for(let i=0;i<str.length;i++){ h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+function viralityScore(tag, seed){
+  const dayKey = Math.floor(Date.now() / 86400000);
+  const h = hashStr(tag + '|' + seed + '|' + dayKey);
+  return 70 + (h % 30);
+}
+function scoreColor(s){ return s >= 90 ? 'bg-emerald-400/20 text-emerald-300' : s >= 80 ? 'bg-amber-400/20 text-amber-300' : 'bg-rose-400/20 text-rose-300'; }
+
+/* ================= BUILDERS ================= */
+function buildCaptions(prompt, catKey){
+  const cap = (prompt||'this moment').trim().replace(/\s+/g,' ').replace(/[.!?]+$/,'');
+  const phrase = cap.length > 3 ? cap : 'this moment';
+  const p = phrase.charAt(0).toUpperCase() + phrase.slice(1);
+  const cat = CAPTION_DB[catKey] || CAPTION_DB.Lifestyle;
+  const chosen = shuffle(cat.templates).slice(0, CAPTIONS_SHOWN).map(t => t(p));
+  let i = 0;
+  while(chosen.length < CAPTIONS_SHOWN && i < cat.templates.length){
+    const t = cat.templates[i](p);
+    if(!chosen.includes(t)) chosen.push(t);
+    i++;
+  }
+  return chosen.map(t => Math.random() < .5 ? t + ' ' + pick(cat.emoji) : t);
+}
+
+function buildHashtags(catKey, seedPrompt){
+  const dbCat = HASHTAG_DB[catKey] || HASHTAG_DB.Lifestyle;
+  /* guaranteed universal reach first: fyp, viral, explore always present */
+  const out = ['fyp','viral','explore'];
+  const extraUni = shuffle(UNIVERSAL_TAGS.filter(t => !out.includes(t))).slice(0, 2);
+  const seen = new Set(out);
+  extraUni.forEach(t => { if(!out.includes(t)){ out.push(t); seen.add(t); } });
+  const pool = shuffle(dbCat);
+  let i = 0;
+  while(out.length < 15 && i < pool.length){
+    const k = pool[i].toLowerCase().replace(/[^\w]/g,'');
+    if(!seen.has(k)){ seen.add(k); out.push(pool[i]); }
+    i++;
+  }
+  return out.slice(0,15);
+}
+
+/* ================= RENDER ================= */
+function renderResults(){
+  const badge = $('detectedBadge');
+  badge.textContent = `Smart pick: ${detectedCat}`;
+  badge.classList.remove('hidden');
+  const savedSet = new Set(loadSaved().map(s => s.text));
+
+  captionsGrid.innerHTML = currentCaptions.map((cap, i) => {
+    const isSaved = savedSet.has(cap);
+    return `
+    <article class="caption-card glass rounded-[22px] p-5 flex flex-col card-in" style="animation-delay:${i*90}ms">
+      <div class="flex items-center justify-between mb-3">
+        <span class="text-[11px] font-extrabold uppercase tracking-widest px-3 py-1 rounded-full grad-btn text-white">Option ${i+1}</span>
+        <span class="text-xs font-bold text-white/50 flex items-center gap-1.5"><i class="fa-solid fa-brain text-pink-400"></i>${escapeHtml(detectedCat)}</span>
+      </div>
+      <p class="text-[17px] leading-relaxed font-medium flex-1">${escapeHtml(cap)}</p>
+      <div class="flex gap-2 mt-5">
+        <div class="relative copy-wrap flex-1">
+          <span class="copy-tooltip bg-slate-900 text-white text-xs font-bold px-3 py-1.5 rounded-full border border-white/20">Copied! ✓</span>
+          <button class="copy-btn w-full rounded-full py-2.5 text-sm font-bold glass-strong hover:scale-[1.03] active:scale-95 transition flex items-center justify-center gap-2" data-copy="${escapeHtml(cap)}">
+            <i class="fa-regular fa-copy"></i> Copy
+          </button>
+        </div>
+        <button class="heart-btn ${isSaved?'saved':''} w-11 shrink-0 rounded-full glass-strong flex items-center justify-center text-lg hover:scale-110 active:scale-90 transition text-white/80" data-save="${escapeHtml(cap)}" aria-label="Save caption" title="${isSaved?'Saved':'Save'}">
+          <i class="${isSaved?'fa-solid':'fa-regular'} fa-heart"></i>
+        </button>
+      </div>
+    </article>`;
+  }).join('');
+
+  let sum = 0;
+  hashtagsBox.innerHTML = currentHashtags.map((h, i) => {
+    const s = viralityScore(h, lastPrompt + detectedCat);
+    sum += s;
+    return `<span class="tag-chip glass-strong rounded-full pl-3.5 pr-2 py-1.5 text-sm font-semibold flex items-center gap-1.5 hover:scale-105 transition cursor-pointer" data-tag="${escapeHtml(h)}">
+      ${escapeHtml('#'+h.replace(/^#/,''))}
+      <span class="score-pill ${scoreColor(s)}"><i class="fa-solid fa-fire"></i>${s}%</span>
+    </span>`;
+  }).join('');
+  const avg = Math.round(sum / Math.max(1,currentHashtags.length));
+  const ab = $('avgScoreBadge');
+  ab.innerHTML = `<i class="fa-solid fa-fire text-amber-400"></i> Avg virality ${avg}%`;
+  ab.classList.remove('hidden');
+
+  captionsGrid.querySelectorAll('.copy-btn').forEach(btn => {
+    btn.addEventListener('click', () => copyText(btn.dataset.copy, btn.closest('.copy-wrap')));
+  });
+  captionsGrid.querySelectorAll('.heart-btn').forEach(btn => {
+    btn.addEventListener('click', () => toggleSave(btn.dataset.save, btn));
+  });
+  hashtagsBox.querySelectorAll('.tag-chip').forEach(chip => {
+    chip.addEventListener('click', () => copyText(chip.dataset.tag, null, chip.dataset.tag + ' copied'));
+  });
+
+  $('resultsSection').classList.remove('hidden');
+}
+
+/* ================= COPY ================= */
+async function copyText(text, wrapEl, msg){
+  const done = () => {
+    if(wrapEl){ wrapEl.classList.add('copied'); setTimeout(() => wrapEl.classList.remove('copied'), 1200); }
+    showToast(msg || 'Copied to clipboard!');
+  };
+  try{
+    if(navigator.clipboard && window.isSecureContext){ await navigator.clipboard.writeText(text); done(); return; }
+    throw new Error('no clip');
+  }catch(e){
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position='fixed'; ta.style.opacity='0';
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    try{ document.execCommand('copy'); done(); }
+    catch(err){ showToast('Copy failed — long-press to copy'); }
+    document.body.removeChild(ta);
+  }
+}
+
+/* ================= FAVOURITES ================= */
+const STORAGE_KEY = 'cm-saved-captions-v2';
+function loadSaved(){
+  try{ const raw = localStorage.getItem(STORAGE_KEY); if(!raw) return []; const arr = JSON.parse(raw); return Array.isArray(arr) ? arr : []; }
+  catch(e){ return []; }
+}
+function persistSaved(list){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(list)); }catch(e){} }
+
+function toggleSave(text, btn){
+  let list = loadSaved();
+  const idx = list.findIndex(s => s.text === text);
+  if(idx >= 0){ list.splice(idx,1); showToast('Removed from favourites'); }
+  else { list.unshift({ text, cat: detectedCat, ts: Date.now() }); showToast('Saved to favourites ❤️'); }
+  persistSaved(list);
+  renderSaved();
+  document.querySelectorAll(`.heart-btn[data-save="${CSS.escape(text)}"]`).forEach(b => {
+    const saved = loadSaved().some(s => s.text === text);
+    b.classList.toggle('saved', saved);
+    b.innerHTML = `<i class="${saved?'fa-solid':'fa-regular'} fa-heart"></i>`;
+  });
+}
+
+function renderSaved(){
+  const list = loadSaved();
+  $('savedCount').textContent = `${list.length} saved`;
+  $('savedEmpty').classList.toggle('hidden', list.length !== 0);
+  $('savedList').innerHTML = list.map((s, i) => `
+    <div class="saved-item glass-strong rounded-2xl p-4 flex gap-3 items-start card-in" style="animation-delay:${i*60}ms">
+      <div class="w-10 h-10 shrink-0 rounded-xl grad-btn flex items-center justify-center text-white shadow-md shadow-pink-500/30"><i class="fa-solid fa-heart"></i></div>
+      <div class="flex-1 min-w-0">
+        <p class="text-[15px] leading-snug font-medium break-words">${escapeHtml(s.text)}</p>
+        <div class="text-xs text-white/50 mt-1.5 flex flex-wrap gap-2 items-center">
+          <span class="font-bold"><i class="fa-solid fa-brain mr-1 text-pink-400"></i>${escapeHtml(s.cat||'Lifestyle')}</span>
+          <span>${new Date(s.ts).toLocaleDateString(undefined,{month:'short',day:'numeric'})}</span>
+        </div>
+      </div>
+      <button class="saved-copy shrink-0 w-9 h-9 rounded-full glass-strong flex items-center justify-center hover:scale-110 active:scale-90 transition" data-copy="${escapeHtml(s.text)}" title="Copy"><i class="fa-regular fa-copy text-sm"></i></button>
+      <button class="saved-del shrink-0 w-9 h-9 rounded-full bg-rose-500/15 border border-rose-500/25 text-rose-400 flex items-center justify-center hover:bg-rose-500 hover:text-white transition" data-del="${escapeHtml(s.text)}" title="Remove"><i class="fa-solid fa-xmark text-sm"></i></button>
+    </div>`).join('');
+
+  $('savedList').querySelectorAll('.saved-copy').forEach(b => b.addEventListener('click', () => copyText(b.dataset.copy, null)));
+  $('savedList').querySelectorAll('.saved-del').forEach(b => b.addEventListener('click', () => {
+    let list = loadSaved(); list = list.filter(s => s.text !== b.dataset.del); persistSaved(list); renderSaved();
+    document.querySelectorAll(`.heart-btn[data-save="${CSS.escape(b.dataset.del)}"]`).forEach(hb => { hb.classList.remove('saved'); hb.innerHTML = '<i class="fa-regular fa-heart"></i>'; });
+    showToast('Removed');
+  }));
+}
+$('clearSavedBtn').addEventListener('click', () => {
+  if(loadSaved().length === 0){ showToast('Nothing to clear'); return; }
+  persistSaved([]);
+  renderSaved();
+  document.querySelectorAll('.heart-btn').forEach(hb => { hb.classList.remove('saved'); hb.innerHTML = '<i class="fa-regular fa-heart"></i>'; });
+  showToast('All favourites cleared');
+});
+
+/* ================= GENERATE (1s spinner + auto-scroll) ================= */
+let generating = false;
+function generate(){
+  if(generating) return;
+  const val = promptInput.value.trim();
+  if(!val){
+    showToast('Describe your post first ✏️');
+    promptInput.focus();
+    return;
+  }
+  generating = true;
+  generateLabel.textContent = 'Generating';
+  generateLoading.classList.remove('hidden'); generateLoading.classList.add('flex');
+  generateBtn.disabled = true; generateBtn.classList.add('opacity-80');
+
+  setTimeout(() => {
+    lastPrompt = val;
+    detectedCat = detectCategory(val);
+    currentCaptions = buildCaptions(val, detectedCat);
+    currentHashtags = buildHashtags(detectedCat, val);
+    renderResults();
+
+    generateLabel.textContent = 'Generate Magic';
+    generateLoading.classList.add('hidden'); generateLoading.classList.remove('flex');
+    generating = false;
+    generateBtn.disabled = false; generateBtn.classList.remove('opacity-80');
+
+    undockTool();
+    setTimeout(() => {
+      $('resultsSection').scrollIntoView({ behavior:'smooth', block:'start' });
+    }, 60);
+    showToast(detectedCat === 'Lifestyle' ? 'Aesthetic mode pulled ✨' : `Smart mode: ${detectedCat} database loaded 🚀`);
+  }, 1000);
+}
+generateBtn.addEventListener('click', generate);
+$('regenBtn').addEventListener('click', () => { promptInput.value = lastPrompt || promptInput.value; generate(); });
+promptInput.addEventListener('keydown', e => {
+  if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); generate(); }
+});
+$('copyTagsBtn').addEventListener('click', () => {
+  if(!currentHashtags.length) return;
+  copyText(currentHashtags.map(t => '#'+t.replace(/^#/,'')).join(' '), $('copyTagsBtn').closest('.copy-wrap'), 'Hashtags copied!');
+});
+
+/* init */
+renderSaved();
+</script>
+</body>
+</html>
